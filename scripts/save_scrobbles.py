@@ -3,12 +3,15 @@ import pandas as pd
 from datetime import datetime
 import time
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # ---- CONFIG ----
-LASTFM_USER = "thugg_59"
-API_KEY = "your_lastfm_api_key"
-SAVE_FILE = "../data/scrobbles_now.csv"   # where new streams will be stored
-FETCH_INTERVAL = 60  # seconds between checks (set higher if you want)
+LASTFM_USER = os.getenv("LASTFM_USER")
+API_KEY = os.getenv("LASTFM_API_KEY")
+SAVE_FILE = "./data/scrobbles_now.csv"
+FETCH_INTERVAL = 60  # seconds between checks
 # ----------------
 
 def fetch_lastfm_recent(user, api_key, limit=10):
