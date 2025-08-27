@@ -3,12 +3,11 @@ name: Update Scrobbles
 on:
   schedule:
     - cron: "*/15 * * * *"   # every 15 minutes
-  workflow_dispatch:          # allow manual run from GitHub UI
+  workflow_dispatch:         # allow manual trigger too
 
 jobs:
   update-scrobbles:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
@@ -16,23 +15,22 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
+          python-version: "3.x"
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+        run: pip install -r requirements.txt
 
-      - name: Run scrobble fetcher
+      - name: Run fetch script (ONCE mode)
         env:
           LASTFM_USER: ${{ secrets.LASTFM_USER }}
           LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
+          ONCE: "1"
         run: python scripts/save_scrobbles.py
 
-      - name: Commit and push if changed
+      - name: Commit & Push changes
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/scrobbles_now.csv
-          git commit -m "Update scrobbles [skip ci]" || echo "No changes to commit"
+          git commit -m "🔄 Update scrobbles ($(date))" || echo "No changes to commit"
           git push
