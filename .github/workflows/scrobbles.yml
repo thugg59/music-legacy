@@ -34,3 +34,15 @@ jobs:
           git add data/scrobbles_now.csv
           git commit -m "🔄 Update scrobbles ($(date))" || echo "No changes to commit"
           git push
+
+                - name: Build dashboard
+        run: python scripts/make_dashboard.py
+
+      - name: Commit & Push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/scrobbles_now.csv docs/index.html
+          git commit -m "🔄 Update scrobbles & dashboard ($(date))" || echo "No changes to commit"
+          git push
+
