@@ -1,75 +1,66 @@
+import os
+import time
 import requests
 import pandas as pd
-from datetime import datetime
-import time
-import os
-from dotenv import load_dotenv
+from pathlib import Path
 
-load_dotenv()
-
-# ---- CONFIG ----
 LASTFM_USER = os.getenv("LASTFM_USER")
-API_KEY = os.getenv("LASTFM_API_KEY")
-SAVE_FILE = "./data/scrobbles_now.csv"
-FETCH_INTERVAL = 60  # seconds between checks
-# ----------------
+LASTFM_API_KEY = os.getenv("LASTFM_API_KEY")
+DATA_PATH = Path("./data/scrobbles_now.csv")
+FETCH_INTERVAL = 60  # seconds
 
+def fetch_recent_tracks(limit=50):
+    url = (
+        "http://ws.audioscrobbler.com/2.0/"
+        f"?method=user.getrecenttracks&user={LASTFM_USER}"
+        f"&api_key={LASTFM_API_KEY}&format=json&limit={limit}"
+    )
+    r = requests.get(url)
+    r.raise_for_status()
+    data = r.json()
+    tracks = []
 
-def fetch_lastfm_recent(user, api_key, limit=10):
-    """Fetch recent scrobbles from Last.fm (skip now playing)."""
-    url = "http://ws.audioscrobbler.com/2.0/"
-    params = {
-        "method": "user.getrecenttracks",
-        "user": user,
-        "api_key": api_key,
-        "format": "json",
-        "limit": limit
-    }
-    r = requests.get(url, params=params).json()
-    tracks = r.get("recenttracks", {}).get("track", [])
-    scrobbles = []
-
-    for t in tracks:
-        if "date" not in t:  # skip "now playing"
-            continue
-        scrobbles.append({
-            "artist": t["artist"]["#text"],
-            "track": t["name"],
-            "album": t["album"]["#text"],
-            "played_at": datetime.utcfromtimestamp(int(t["date"]["uts"]))
+    for item in data["recenttracks"]["track"]:
+        if "date" not in item:
+            continue  # skip "now playing" (no timestamp yet)
+        played_at = item["date"]["#uts"]
+        tracks.append({
+            "artist": item["artist"]["#text"],
+            "track": item["name"],
+            "album": item["album"]["#text"],
+            "played_at": pd.to_datetime(int(played_at), unit="s")
         })
-    return pd.DataFrame(scrobbles)
+    return pd.DataFrame(tracks)
 
+def ensure_csv():
+    if not DATA_PATH.exists():
+        df = pd.DataFrame(columns=["artist", "track", "album", "played_at"])
+        df.to_csv(DATA_PATH, index=False)
+        print(f"📄 Created empty CSV at {DATA_PATH}")
 
-# ---- Ensure file exists ----
-if os.path.exists(SAVE_FILE):
-    scrobbles_df = pd.read_csv(SAVE_FILE, parse_dates=["played_at"])
-else:
-    scrobbles_df = pd.DataFrame(columns=["artist", "track", "album", "played_at"])
-    scrobbles_df.to_csv(SAVE_FILE, index=False, encoding="utf-8")
-    print(f"📄 Created empty CSV at {SAVE_FILE}")
+def save_new_scrobbles():
+    ensure_csv()
+    scrobbles_df = pd.read_csv(DATA_PATH, parse_dates=["played_at"])
+    new_df = fetch_recent_tracks()
 
-print(f"Currently stored: {len(scrobbles_df)} plays")
+    merged = pd.concat([scrobbles_df, new_df]).drop_duplicates(
+        subset=["artist", "track", "album", "played_at"], keep="first"
+    ).sort_values("played_at")
 
+    merged.to_csv(DATA_PATH, index=False)
+    print(f"💾 Saved! Total plays stored: {len(merged)}")
 
-# ---- Continuous loop ----
-try:
-    while True:
-        new_df = fetch_lastfm_recent(LASTFM_USER, API_KEY, limit=10)
+def main():
+    run_once = os.getenv("ONCE") == "1"
 
-        if not new_df.empty:
-            # Merge and keep only unique scrobbles
-            merged = pd.concat([scrobbles_df, new_df]) \
-                        .drop_duplicates(subset=["artist", "track", "played_at"]) \
-                        .sort_values("played_at") \
-                        .reset_index(drop=True)
+    if run_once:
+        print("⚡ Running once (GitHub Actions mode)")
+        save_new_scrobbles()
+    else:
+        print("🔁 Continuous mode (local logging)")
+        while True:
+            save_new_scrobbles()
+            time.sleep(FETCH_INTERVAL)
 
-            if len(merged) > len(scrobbles_df):
-                merged.to_csv(SAVE_FILE, index=False, encoding="utf-8")
-                scrobbles_df = merged
-                print(f"💾 Saved! Total plays stored: {len(scrobbles_df)}")
-
-        time.sleep(FETCH_INTERVAL)
-
-except KeyboardInterrupt:
-    print("🛑 Stopped recording.")
+if __name__ == "__main__":
+    main()
