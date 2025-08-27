@@ -22,7 +22,8 @@ The goal is to make my listening data *immortal* — stored in a permanent, open
 ---
 
 ## 🛠️ How this works
-- Data is exported from **Last.fm** (master log) and/or **Stats.fm**.
+- Data is exported from Last.fm (master log).
+Listening history from Stats.fm may be included via API or other methods, but direct exports aren’t officially supported.
 - Files are append-only: old entries are never modified.
 - Regular backups are automated via GitHub Actions.
 
