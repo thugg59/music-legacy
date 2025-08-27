@@ -13,7 +13,7 @@ df = pd.read_csv(data_file)
 # Keep only the most recent 20 plays
 latest = df.sort_values("played_at", ascending=False).head(20)
 
-# Make a simple HTML table
+# Simple HTML dashboard
 html = """
 <html>
 <head>
@@ -37,5 +37,8 @@ html = """
 
 out_file.parent.mkdir(exist_ok=True)
 out_file.write_text(html, encoding="utf-8")
+
+# Create .nojekyll so GitHub Pages serves raw HTML
+Path("docs/.nojekyll").touch()
 
 print(f"✅ Dashboard generated at {out_file}")
