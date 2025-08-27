@@ -9,28 +9,31 @@ LASTFM_API_KEY = os.getenv("LASTFM_API_KEY")
 DATA_PATH = Path("./data/scrobbles_now.csv")
 FETCH_INTERVAL = 60  # seconds
 
-def fetch_recent_tracks(limit=50):
-    url = (
-        "http://ws.audioscrobbler.com/2.0/"
-        f"?method=user.getrecenttracks&user={LASTFM_USER}"
-        f"&api_key={LASTFM_API_KEY}&format=json&limit={limit}"
-    )
-    r = requests.get(url)
-    r.raise_for_status()
-    data = r.json()
-    tracks = []
+def fetch_recent_tracks():
+    url = "http://ws.audioscrobbler.com/2.0/"
+    params = {
+        "method": "user.getrecenttracks",
+        "user": LASTFM_USER,
+        "api_key": API_KEY,
+        "format": "json",
+        "limit": 50
+    }
+    r = requests.get(url, params=params).json()
+    tracks = r.get("recenttracks", {}).get("track", [])
+    scrobbles = []
 
-    for item in data["recenttracks"]["track"]:
-        if "date" not in item:
-            continue  # skip "now playing" (no timestamp yet)
-        played_at = item["date"]["#uts"]
-        tracks.append({
+    for item in tracks:
+        if "date" not in item:  # skip currently playing tracks
+            continue
+        played_at = pd.to_datetime(int(item["date"]["uts"]), unit="s")
+        scrobbles.append({
             "artist": item["artist"]["#text"],
             "track": item["name"],
             "album": item["album"]["#text"],
-            "played_at": pd.to_datetime(int(played_at), unit="s")
+            "played_at": played_at
         })
-    return pd.DataFrame(tracks)
+    return pd.DataFrame(scrobbles)
+
 
 def ensure_csv():
     if not DATA_PATH.exists():
