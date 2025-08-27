@@ -50,6 +50,7 @@ print(f"Currently stored: {len(scrobbles_df)} plays")
 try:
     while True:
         new_df = fetch_lastfm_recent(LASTFM_USER, API_KEY, limit=50)
+        print(new_df.head())
 
         # keep only truly new scrobbles
         if not new_df.empty:
