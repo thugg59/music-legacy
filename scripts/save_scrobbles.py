@@ -14,7 +14,9 @@ SAVE_FILE = "./data/scrobbles_now.csv"
 FETCH_INTERVAL = 60  # seconds between checks
 # ----------------
 
+
 def fetch_lastfm_recent(user, api_key, limit=10):
+    """Fetch recent scrobbles from Last.fm (skip now playing)."""
     url = "http://ws.audioscrobbler.com/2.0/"
     params = {
         "method": "user.getrecenttracks",
@@ -38,24 +40,29 @@ def fetch_lastfm_recent(user, api_key, limit=10):
         })
     return pd.DataFrame(scrobbles)
 
-# Load old file if exists
+
+# ---- Ensure file exists ----
 if os.path.exists(SAVE_FILE):
     scrobbles_df = pd.read_csv(SAVE_FILE, parse_dates=["played_at"])
 else:
     scrobbles_df = pd.DataFrame(columns=["artist", "track", "album", "played_at"])
+    scrobbles_df.to_csv(SAVE_FILE, index=False, encoding="utf-8")
+    print(f"📄 Created empty CSV at {SAVE_FILE}")
 
 print(f"Currently stored: {len(scrobbles_df)} plays")
 
-# ---- Loop to keep fetching ----
+
+# ---- Continuous loop ----
 try:
     while True:
-        new_df = fetch_lastfm_recent(LASTFM_USER, API_KEY, limit=50)
-        print(new_df.head())
+        new_df = fetch_lastfm_recent(LASTFM_USER, API_KEY, limit=10)
 
-        # keep only truly new scrobbles
         if not new_df.empty:
-            merged = pd.concat([scrobbles_df, new_df]).drop_duplicates(subset=["artist","track","played_at"])
-            merged = merged.sort_values("played_at").reset_index(drop=True)
+            # Merge and keep only unique scrobbles
+            merged = pd.concat([scrobbles_df, new_df]) \
+                        .drop_duplicates(subset=["artist", "track", "played_at"]) \
+                        .sort_values("played_at") \
+                        .reset_index(drop=True)
 
             if len(merged) > len(scrobbles_df):
                 merged.to_csv(SAVE_FILE, index=False, encoding="utf-8")
@@ -65,4 +72,4 @@ try:
         time.sleep(FETCH_INTERVAL)
 
 except KeyboardInterrupt:
-    print("Stopped recording.")
+    print("🛑 Stopped recording.")
