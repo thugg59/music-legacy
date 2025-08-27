@@ -23,16 +23,26 @@ def fetch_recent_tracks():
     scrobbles = []
 
     for item in tracks:
-        if "date" not in item:  # skip currently playing tracks
+        # Skip "now playing" tracks or missing date
+        date_info = item.get("date")
+        if not date_info:
             continue
-        played_at = pd.to_datetime(int(item["date"]["uts"]), unit="s")
+
+        # Some responses use "#uts" or "uts"
+        uts = date_info.get("#uts") or date_info.get("uts")
+        if not uts:
+            continue
+
+        played_at = pd.to_datetime(int(uts), unit="s")
         scrobbles.append({
             "artist": item["artist"]["#text"],
             "track": item["name"],
             "album": item["album"]["#text"],
             "played_at": played_at
         })
+
     return pd.DataFrame(scrobbles)
+
 
 
 def ensure_csv():
