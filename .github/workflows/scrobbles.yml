@@ -2,8 +2,15 @@ name: Update Scrobbles
 
 on:
   schedule:
-    - cron: "*/5 * * * *"   # every 5 minutes
-  workflow_dispatch:         # manual trigger possible
+    - cron: "*/5 * * * *"   # every 5 minutes (UTC)
+  workflow_dispatch:
+
+permissions:
+  contents: write  # allow pushing back to the repo
+
+concurrency:
+  group: scrobbles
+  cancel-in-progress: true  # prevent overlapping runs
 
 jobs:
   update-scrobbles:
@@ -11,25 +18,27 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.x"
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: "requirements.txt"
 
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Fetch latest scrobbles (ONCE mode)
+      - name: Fetch latest scrobbles (ONCE)
         env:
           LASTFM_USER: ${{ secrets.LASTFM_USER }}
           LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
-          ONCE: "1"
         run: python scripts/save_scrobbles.py
 
       - name: Build dashboard
         run: |
+          mkdir -p docs
           python scripts/make_dashboard.py
           touch docs/.nojekyll
 
@@ -37,6 +46,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/scrobbles_now.csv docs/index.html docs/.nojekyll
-          git commit -m "🔄 Update scrobbles & dashboard ($(date))" || echo "No changes to commit"
+          git add -A
+          git commit -m "🔄 Update scrobbles & dashboard ($(date -u +'%Y-%m-%dT%H:%M:%SZ'))" || echo "No changes to commit"
           git push
