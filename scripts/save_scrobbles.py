@@ -1,79 +1,76 @@
 import os
-import time
 import requests
 import pandas as pd
-from pathlib import Path
+from datetime import datetime
 
-LASTFM_USER = os.getenv("LASTFM_USER")
-LASTFM_API_KEY = os.getenv("LASTFM_API_KEY")
-DATA_PATH = Path("./data/scrobbles_now.csv")
-FETCH_INTERVAL = 60  # seconds
+# Load environment variables
+API_KEY = os.getenv("LASTFM_API_KEY")
+USER = os.getenv("LASTFM_USER")
 
-def fetch_recent_tracks():
+if not API_KEY or not USER:
+    raise ValueError("❌ Missing LASTFM_API_KEY or LASTFM_USER. Did you set repository secrets?")
+
+DATA_FILE = "scrobbles.csv"
+
+def fetch_recent_tracks(limit=50):
+    """Fetch recent tracks from Last.fm"""
     url = "http://ws.audioscrobbler.com/2.0/"
     params = {
         "method": "user.getrecenttracks",
-        "user": LASTFM_USER,
+        "user": USER,
         "api_key": API_KEY,
         "format": "json",
-        "limit": 50
+        "limit": limit,
     }
-    r = requests.get(url, params=params).json()
-    tracks = r.get("recenttracks", {}).get("track", [])
-    scrobbles = []
 
-    for item in tracks:
-        # Skip "now playing" tracks or missing date
-        date_info = item.get("date")
-        if not date_info:
+    r = requests.get(url, params=params)
+    r.raise_for_status()
+    data = r.json()
+
+    tracks = []
+    for item in data.get("recenttracks", {}).get("track", []):
+        # Skip "now playing" (no date)
+        if "date" not in item:
             continue
 
-        # Some responses use "#uts" or "uts"
-        uts = date_info.get("#uts") or date_info.get("uts")
-        if not uts:
+        # Some APIs use 'uts', some use '#uts'
+        played_at = item["date"].get("uts") or item["date"].get("#uts")
+        if not played_at:
             continue
 
-        played_at = pd.to_datetime(int(uts), unit="s")
-        scrobbles.append({
+        tracks.append({
             "artist": item["artist"]["#text"],
             "track": item["name"],
             "album": item["album"]["#text"],
-            "played_at": played_at
+            "played_at": datetime.utcfromtimestamp(int(played_at)),
         })
 
-    return pd.DataFrame(scrobbles)
+    return pd.DataFrame(tracks)
 
-
-
-def ensure_csv():
-    if not DATA_PATH.exists():
-        df = pd.DataFrame(columns=["artist", "track", "album", "played_at"])
-        df.to_csv(DATA_PATH, index=False)
-        print(f"📄 Created empty CSV at {DATA_PATH}")
 
 def save_new_scrobbles():
-    ensure_csv()
-    scrobbles_df = pd.read_csv(DATA_PATH, parse_dates=["played_at"])
+    """Fetch new tracks and save them to CSV (no duplicates)."""
     new_df = fetch_recent_tracks()
 
-    merged = pd.concat([scrobbles_df, new_df]).drop_duplicates(
-        subset=["artist", "track", "album", "played_at"], keep="first"
-    ).sort_values("played_at")
+    if new_df.empty:
+        print("⚠️ No new tracks fetched.")
+        return
 
-    merged.to_csv(DATA_PATH, index=False)
-    print(f"💾 Saved! Total plays stored: {len(merged)}")
+    if os.path.exists(DATA_FILE):
+        old_df = pd.read_csv(DATA_FILE, parse_dates=["played_at"])
+        combined = pd.concat([old_df, new_df]).drop_duplicates(subset=["artist", "track", "played_at"])
+    else:
+        combined = new_df
+
+    combined.sort_values("played_at", inplace=True)
+    combined.to_csv(DATA_FILE, index=False)
+    print(f"✅ Saved {len(new_df)} new scrobbles, total {len(combined)}.")
+
 
 def main():
-    run_once = os.getenv("ONCE") == "1"
+    print("⚡ Running once (GitHub Actions mode)")
+    save_new_scrobbles()
 
-    if run_once:
-        print("⚡ Running once (GitHub Actions mode)")
-        save_new_scrobbles()
-    else:
-        print("🔁 Continuous mode (local logging)")
-        while True:
-            save_new_scrobbles()
-            time.sleep(FETCH_INTERVAL)
 
 if __name__ == "__main__":
     main()
