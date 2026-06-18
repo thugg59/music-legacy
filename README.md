@@ -1,9 +1,11 @@
 # 🎶 Music Legacy
 
-**My musical legacy — lifetime listening history backed up forever.**
+My musical legacy — a permanent archive of my lifetime listening history.
 
-This repository is an **append-only archive** of my music listening history.  
-The goal is to make my listening data *immortal* — stored in a permanent, open, and verifiable way.
+This repository serves as an append-only backup of my music listening data.
+Its purpose is to preserve my listening history in a permanent, open, and verifiable format.
+
+As long as this repository exists, this record of my musical journey remains accessible.
 
 ---
 
