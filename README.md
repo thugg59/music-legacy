@@ -17,10 +17,9 @@ As long as this repository exists, this record of my musical journey remains acc
 ---
 
 ## 📂 Structure
-- `data/` → CSV/JSONL exports of my listening history
-- `scripts/` → automation scripts for fetching new data
-- `docs/` → explanations, charts, yearbooks (later)
-
+- `data/` → CSV and JSONL exports of my listening history
+- `scripts/` → automation scripts for fetching and updating data
+- `docs/` → documentation, visualizations, and yearly summaries (planned)
 ---
 
 ## 🛠️ How this works
