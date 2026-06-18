@@ -20,13 +20,14 @@ As long as this repository exists, this record of my musical journey remains acc
 - `data/` → CSV and JSONL exports of my listening history
 - `scripts/` → automation scripts for fetching and updating data
 - `docs/` → documentation, visualizations, and yearly summaries (planned)
+  
 ---
 
-## 🛠️ How this works
-- Data is exported from Last.fm (master log).
-Listening history from Stats.fm may be included via API or other methods, but direct exports aren’t officially supported.
-- Files are append-only: old entries are never modified.
-- Regular backups are automated via GitHub Actions.
+## 🛠️ How It Works
+- Data is exported from Last.fm, which serves as the master listening log.
+- Listening history from Stats.fm may also be included through its API or other available methods, as direct data exports are not officially supported.
+- Files are append-only: existing entries are never modified or removed.
+- Regular backups are automated using GitHub Actions.
 
 ---
 
