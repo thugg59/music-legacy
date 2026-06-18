@@ -25,12 +25,5 @@ As long as this repository exists, this record of my musical journey remains acc
 
 ## 🛠️ How It Works
 - Data is exported from Last.fm, which serves as the master listening log.
-- Listening history from Stats.fm may also be included through its API or other available methods, as direct data exports are not officially supported.
 - Files are append-only: existing entries are never modified or removed.
 - Regular backups are automated using GitHub Actions.
-
----
-
-## 📜 License
-This is my **personal archive**. You’re free to fork/clone for preservation,  
-but please respect that this is a **personal historical record**.
